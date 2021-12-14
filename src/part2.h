@@ -1,4 +1,84 @@
 #include "global_var.h"
+#include <iostream>
+#include <string.h>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+using namespace std;
+
+#define red "\e[91;1m"
+#define green "\e[92;1m"
+#define blue "\e[94;1m"
+#define white "\e[0m"
+#define MAX_FILE_NUM 10         // 最大可读取文件数量
+#define MAX_CHAR_NUM 1000000    // 单个文件最大字符数
+#define MAX_LINE_NUM 1000       // 文件最大行数
+#define MAX_CHAR_PER_LINE 1000  // 单行最大字符数
+#define MAX_RE 100              // 正则表达式最大长度
+#define MAX_FILENAME 100        // 文件名最大长度
+
+ifstream fin; // 读入文件流
+
+struct Segment{
+    int start_id;
+    int end_id;
+};
+
+struct printLinetag{
+    Segment Seg;
+    bool Print;
+};
+
+struct File{ // 文件结构
+    char filename[MAX_FILENAME];          // 文件名
+    char filepath[200];                   // 文件的相对目录（相对wdir）
+    int line_cnt = 0;                     // 文件行数
+    char line[MAX_LINE_NUM][MAX_CHAR_PER_LINE]; // 按行记录文件内容
+    printLinetag tag[MAX_LINE_NUM];       // 行输出标记
+}file[MAX_FILE_NUM];
+int file_cnt=0; // 当前已有文件数量
+
+struct GrepArgs{
+    char re[MAX_RE];           // 待匹配正则表达式 （最大字符数100）
+    bool showLineCnt= false;   // 只显示符合样式的行数（仅可与 -H 叠加）
+    bool showFileName = false; // 行首显示文件名称（单文件默认false）
+    bool setH = false;
+    bool ignoreCase = false;   // 忽略字符大小写
+    bool showLineNum = false;  // 行首显示该行编号
+    bool invert = false;       // 反向匹配
+    int sucline = 0;           // 连续显示之后的行数
+    int preline = 0;           // 连续显示之前的行数
+};
+
+bool gotRE = false; // 是否已经读到正则表达式
+bool dp[100][MAX_CHAR_PER_LINE]; // 动态规划进行正则匹配
+
+char grepHelpStr[]="  Usage: grep [OPTION]... PATTERNS [FILE]...\
+\n  Search for PATTERNS in each FILE.\
+\n  Example: grep -i 'hello world' menu.h main.c\
+\n  PATTERNS can contain multiple patterns separated by newlines.\
+\n\
+\n  Pattern selection and interpretation:\
+\n  -i,           ignore case distinctions in patterns and data\
+\n  --h, --help   display this help text and exit\
+\n  \
+\n  Output control: \
+\n  -n,           print line number with output lines\
+\n  -H,           print file name with output lines\
+\n  -h,           suppress the file name prefix on output\
+\n  -c,           print only a count of selected lines per FILE\
+\n  \
+\n  Context control:\
+\n  -B,           print NUM lines of leading context\
+\n  -A,           print NUM lines of trailing context\
+\n  -v,           inverse match\
+\n  \
+\n  When FILE is '-', read standard input.\
+\n  With fewer than two FILEs, assume -h.\
+\n  \
+\n  Report bugs to: nzk20@mails.tsinghua.edu.cn\n\n";
+
+char s[200];
 
 void itos(int x){
     int t=0;
